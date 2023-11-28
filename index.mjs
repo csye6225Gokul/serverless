@@ -121,7 +121,7 @@ export const handler = async (event, context) => {
                     await storeInGCS(releaseData, userEmail);
 
                     console.log('Sending email...');
-                    await sendEmail(userEmail, `Assignment Submitted Sucess', 'Your Assignment has been downloaded and stored. Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
+                    await sendEmail(userEmail, 'Assignment Submitted Sucess', `Your Assignment has been downloaded and stored. Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
 
                     console.log('Recording email sent...');
                     await recordEmailSent(userEmail,"success");
