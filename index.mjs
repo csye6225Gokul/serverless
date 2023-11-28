@@ -1,7 +1,3 @@
-//import { downloadRelease } from './src/services/githubService.mjs';
-//import { storeInGCS } from './src/services/googleCloudService.mjs';
-//import { sendEmail } from './src/services/emailService.mjs';
-//import { recordEmailSent } from './src/services/dynamoDBService.mjs';
 import { config } from 'dotenv';
 import AWS from 'aws-sdk';
 import { Storage } from '@google-cloud/storage';
@@ -11,8 +7,7 @@ import axios from 'axios';
 
 config();
 
-
-const downloadRelease = async (url, outputFilename, userEmail) => {
+const downloadRelease = async (url, userEmail, attempt,maxRetries) => {
     try {
         console.log(url)
 
@@ -24,32 +19,13 @@ const downloadRelease = async (url, outputFilename, userEmail) => {
 
         const fileBuffer = Buffer.from(response.data);
 
-        // const writer = fs.createWriteStream(outputFilename);
-
-        // response.data.pipe(writer);
 
         console.log(fileBuffer)
        
         return fileBuffer
-
-        // console.log(outputFilename)
-        // return new Promise((resolve, reject) => {
-        //     writer.on('finish', () => {
-        //         console.log('Download complete:', outputFilename);
-        //         resolve(outputFilename); // Resolving with the file path
-        //     });
-        //     writer.on('error', (writeError) => {
-        //         console.error('Error writing the file:', writeError);
-        //         reject(writeError);
-        //     });
-        //     response.data.on('error', (streamError) => {
-        //         console.error('Error in the data stream:', streamError);
-        //         reject(streamError);
-        //     });
-        // });
     } catch (error) {
-        await sendEmail(userEmail, 'Assignment Submitted Failed', 'Your Assignment has not able to downloaded and stored. Please see your submission');
-
+        await sendEmail(userEmail, 'Assignment Submitted Failed', `Your Assignment has not able to downloaded and stored. Please see your submission and submit again.  Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
+        await recordEmailSent(userEmail,"fail");
         console.log('Error downloading the release:', error);
         throw error;
     }
@@ -66,11 +42,9 @@ const storeInGCS = async (filePath, email) => {
         credentials: serviceAccountKey
     });
 
-    // Include a timestamp in the file name to ensure uniqueness
+    
     const timestamp = new Date().toISOString().replace(/:/g, '-'); // ISO string with colons replaced for compatibility
     const fileName = `${email}-submission-${timestamp}.zip`;
-
-    //const data = await readFile(filePath);  // Read the file's binary content
 
     try {
         const bucket = storage.bucket(bucketName);
@@ -95,16 +69,16 @@ const sendEmail = async (recipient, subject, body) => {
             Body: { Text: { Data: body } },
             Subject: { Data: subject },
         },
-        Source: 'gokul.jaya1999+demo@gmail.com',
+        Source: process.env.SES_SENDER_EMAIL,
     };
     try {
         await ses.sendEmail(params).promise();
     } catch (error) {
         await recordEmailSent(recipient,"fail");
         console.log("Email", error)
+        throw error
     }
 
-   
 };
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
@@ -134,102 +108,6 @@ const recordEmailSent = async (email,status) => {
    
 };
 
-
-// export const handler = async (event,context) => {
-//     try {
-//        // const { githubRepo, releaseTag, userEmail } = event;
-
-//         console.log(`Function ${context.functionName} start, execution ${context.awsRequestId}`);
-//     if (Array.isArray(event.Records) && event.Records.length > 0) {
-
-//         event.Records.forEach(async (snsRecord) => {
-//             const snsMessage = snsRecord.Sns.Message;
-
-//             const parsedMessage = JSON.parse(snsMessage);
-
-//             const { userEmail, githubRepo, releaseTag } = parsedMessage;
-
-//             console.info("Email:", userEmail, "Submission URL:", githubRepo);
-
-//             const accountId = process.env.AWS_ACCOUNT_ID;
-//        const roleName = process.env.ROLE_NAME;
-//         const roleArn = `arn:aws:iam::${accountId}:role/${roleName}`;
-
-//         console.log(roleArn)
-
-//         // try {
-//         //     const sts = new AWS.STS();
-//         //     const assumedRole = await sts.assumeRole({
-//         //         RoleArn: roleArn,
-//         //         RoleSessionName: "AssumeGCPRoleSession"
-//         //     }).promise();
-//         //     // Continue with your code after assuming the role
-//         // } catch (error) {
-//         //     console.error("Error assuming role:", error);
-//         //     // Handle error or rethrow
-//         //     throw error;
-//         // }
-
-//         // const releaseData = await downloadRelease(githubRepo, releaseTag).then(() => console.log('Download completed'))
-//         // .catch(error => console.error('Download failed', error));;
-//         // await storeInGCS(releaseData);
-//         // await sendEmail(userEmail, 'Download Completed', 'Your file has been downloaded and stored.');
-//         // await recordEmailSent(userEmail);
-
-
-
-//         console.log('Starting download...');
-//         const releaseData = await downloadRelease(githubRepo, releaseTag);
-//         console.log('Download completed');
-
-//         console.log('Storing in GCS...');
-//         await storeInGCS(releaseData, userEmail);
-
-//         console.log('Sending email...');
-//         await sendEmail(userEmail, 'Assignment Submitted Sucess', 'Your Assignment has been downloaded and stored.');
-
-//         console.log('Recording email sent...');
-//         await recordEmailSent(userEmail);
-
-//         console.log('All operations completed successfully');
-
-//         return { status: 'Success' };
-
-//     //     downloadRelease(githubRepo, releaseTag)
-//     // .then(releaseData => {
-//     //     console.log('Download completed');
-
-//     //     // Chain the other asynchronous operations
-//     //     return storeInGCS(releaseData,userEmail)
-//     //         .then(() => sendEmail(userEmail, 'Assignment Submitted Sucess', 'Your Assignment has been downloaded and stored.'))
-//     //         .then(() => recordEmailSent(userEmail));
-//     // })
-//     // .then(() => {
-//     //     console.log('All operations completed successfully');
-//     // })
-//     // .catch(error => {
-//     //     console.error('An error occurred', error);
-//     // });
-
-//     //     return { status: 'Success' };
-
- 
-//         });
-
-
-//     }
-//     else {
-//         console.error("Event.Records is not an array or is empty:", event.Records);
-//     }
-
-        
-//     } catch (error) {
-//         console.error('Error:', error);
-//         throw error;
-//     }
-// };
-
-
 export const handler = async (event, context) => {
     try {
         console.log(`Function ${context.functionName} start, execution ${context.awsRequestId}`);
@@ -238,31 +116,31 @@ export const handler = async (event, context) => {
             for (const snsRecord of event.Records) {
                 const snsMessage = snsRecord.Sns.Message;
                 const parsedMessage = JSON.parse(snsMessage);
-                const { userEmail, githubRepo, releaseTag } = parsedMessage;
+                const { userEmail, githubRepo, attempt, maxRetries } = parsedMessage;
 
                 try {
                     console.log('Starting download...');
-                    const releaseData = await downloadRelease(githubRepo, releaseTag,userEmail);
+                    const releaseData = await downloadRelease(githubRepo,userEmail,attempt,maxRetries);
                     console.log('Download completed');
 
                     console.log('Storing in GCS...');
                     await storeInGCS(releaseData, userEmail);
 
                     console.log('Sending email...');
-                    await sendEmail(userEmail, 'Assignment Submitted Sucess', 'Your Assignment has been downloaded and stored.');
+                    await sendEmail(userEmail, `Assignment Submitted Sucess', 'Your Assignment has been downloaded and stored. Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
 
                     console.log('Recording email sent...');
                     await recordEmailSent(userEmail,"success");
                 } catch (operationError) {
                     console.error('Error in processing record:', operationError);
-                    // Handle specific record error
+                    
                 }
             }
             console.log('All operations completed successfully');
             return { status: 'Success' };
         } else {
             console.log("Event.Records is not an array or is empty:", event.Records);
-            // Handle empty records case
+            
         }
     } catch (error) {
         console.log('Error:', error);
