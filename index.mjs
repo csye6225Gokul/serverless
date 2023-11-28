@@ -1,8 +1,6 @@
 import { config } from 'dotenv';
 import AWS from 'aws-sdk';
 import { Storage } from '@google-cloud/storage';
-import fs from 'fs';
-import util from 'util';
 import axios from 'axios';
 
 config();
@@ -30,9 +28,6 @@ const downloadRelease = async (url, userEmail, attempt,maxRetries) => {
         throw error;
     }
 };
-
-
-const readFile = util.promisify(fs.readFile);
 
 const storeInGCS = async (filePath, email) => {
     const bucketName = process.env.BUCKET_NAME;
@@ -93,7 +88,6 @@ const recordEmailSent = async (email,status) => {
             email: email,
             status: status,
             timestamp: timestamp
-            //timestamp: new Date().toISOString(),
         },
     };
     try {
