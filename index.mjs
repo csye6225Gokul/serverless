@@ -76,7 +76,7 @@ const storeInGCS = async (filePath, email,attempt,maxRetries) => {
         const file = bucket.file(fileName);
         await file.save(filePath);
 
-        const gcsObjectPath = `https://storage.cloud.google.com/${bucketName}/${fileName}`;
+        const gcsObjectPath = `gs://${bucketName}/${fileName}`;
         console.log('Sending email...');
         await sendEmail(email, 'Assignment Submitted Sucess', `Your Assignment has been downloaded and stored.\n\nYour attempt is ${attempt}, Attempt left is ${maxRetries - attempt}. \n\nGCS Object Path: ${gcsObjectPath}`);
 
