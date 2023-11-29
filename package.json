@@ -1,0 +1,39 @@
+{
+    "name": "serverless",
+    "version": "1.0.0",
+    "description": "This Project is Created For Lambda function. Desc: Assignment Creation Portal",
+    "main": "index.js",
+    "scripts": {
+        "start": "node server.js",
+        "test": "jest",
+        "db:migrate:up": ""
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gokul-j99/serverless"
+    },
+    "type": "module",
+    "author": "Gokul_Jayavel_002768982",
+    "license": "ISC",
+    "dependencies": {
+        "@babel/preset-env": "^7.22.20",
+        "@google-cloud/storage": "^7.6.0",
+        "aws-sdk": "^2.1501.0",
+        "axios": "^1.6.2",
+        "debug": "^4.3.4",
+        "dotenv": "^16.3.1",
+        "fs": "^0.0.1-security",
+        "util": "^0.12.5"
+    },
+    "bugs": {
+        "url": "https://github.com/gokul-j99/serverless/issues"
+    },
+    "homepage": "https://github.com/gokul-j99/serverless#readme",
+    "devDependencies": {
+        "@babel/cli": "^7.23.0",
+        "@babel/core": "^7.23.0",
+        "@babel/node": "^7.22.19",
+        "@babel/preset-env": "^7.22.20",
+        "@babel/register": "^7.22.15"
+    }
+}
