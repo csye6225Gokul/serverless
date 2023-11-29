@@ -15,21 +15,34 @@ const downloadRelease = async (url, userEmail, attempt,maxRetries) => {
             responseType: 'arraybuffer'
         });
 
-        const fileBuffer = Buffer.from(response.data);
+        const statusCode = response.status;
+        const contentLength = response.headers['content-length'];
 
+        if (statusCode === 200 && contentLength && parseInt(contentLength) > 0) {
+            const fileBuffer = Buffer.from(response.data);
 
-        console.log(fileBuffer)
-       
-        return fileBuffer
+            console.log('File downloaded successfully:', url);
+            
+            // Return the file buffer
+            return fileBuffer;
+        } else {
+            
+            console.error('Invalid or empty response:', statusCode);
+            
+            
+            await sendEmail(userEmail, 'Assignment Submitted Failed', `Your Assignment has not been able to download and store. Please check your submission and submit again. Your attempt is ${attempt}, Attempts left: ${maxRetries - attempt}`);
+            await recordEmailSent(userEmail, "fail", "success");
+        }
+    
     } catch (error) {
         await sendEmail(userEmail, 'Assignment Submitted Failed', `Your Assignment has not able to downloaded and stored. Please see your submission and submit again.  Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
-        await recordEmailSent(userEmail,"fail");
+        await recordEmailSent(userEmail,"fail","success");
         console.log('Error downloading the release:', error);
         throw error;
     }
 };
 
-const storeInGCS = async (filePath, email) => {
+const storeInGCS = async (filePath, email,attempt,maxRetries) => {
     const bucketName = process.env.BUCKET_NAME;
     const serviceAccountKey = JSON.parse(Buffer.from(process.env.GCP_SERVICE_ACCOUNT_KEY, 'utf-8'));
 
@@ -38,20 +51,25 @@ const storeInGCS = async (filePath, email) => {
     });
 
     
-    const timestamp = new Date().toISOString().replace(/:/g, '-'); // ISO string with colons replaced for compatibility
-    const fileName = `${email}-submission-${timestamp}.zip`;
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const fileName = `${email}/submission-${attempt}-${timestamp}.zip`;
 
     try {
         const bucket = storage.bucket(bucketName);
         const file = bucket.file(fileName);
         await file.save(filePath);
+
+        const gcsObjectPath = `https://storage.cloud.google.com/${bucketName}/${fileName}`;
+        console.log('Sending email...');
+        await sendEmail(email, 'Assignment Submitted Sucess', `Your Assignment has been downloaded and stored.\n\nYour attempt is ${attempt}, Attempt left is ${maxRetries - attempt}. \n\nGCS Object Path: ${gcsObjectPath}`);
+
+
     } catch (error) {
 
         console.log("Error",error)
         throw error
     }
 
-   
 };
 
 
@@ -69,7 +87,7 @@ const sendEmail = async (recipient, subject, body) => {
     try {
         await ses.sendEmail(params).promise();
     } catch (error) {
-        await recordEmailSent(recipient,"fail");
+        await recordEmailSent(recipient,"success","fail");
         console.log("Email", error)
         throw error
     }
@@ -78,7 +96,7 @@ const sendEmail = async (recipient, subject, body) => {
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
-const recordEmailSent = async (email,status) => {
+const recordEmailSent = async (email,status,emalstat) => {
     const timestamp = new Date().toISOString();
     const ide = email+timestamp;
     const params = {
@@ -86,7 +104,8 @@ const recordEmailSent = async (email,status) => {
         Item: {
             id: ide,
             email: email,
-            status: status,
+            status: emalstat,
+            download: status,
             timestamp: timestamp
         },
     };
@@ -118,13 +137,13 @@ export const handler = async (event, context) => {
                     console.log('Download completed');
 
                     console.log('Storing in GCS...');
-                    await storeInGCS(releaseData, userEmail);
+                    await storeInGCS(releaseData, userEmail,attempt,maxRetries);
 
-                    console.log('Sending email...');
-                    await sendEmail(userEmail, 'Assignment Submitted Sucess', `Your Assignment has been downloaded and stored. Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
+                   // console.log('Sending email...');
+                   // await sendEmail(userEmail, 'Assignment Submitted Sucess', `Your Assignment has been downloaded and stored. Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
 
                     console.log('Recording email sent...');
-                    await recordEmailSent(userEmail,"success");
+                    await recordEmailSent(userEmail,"success","success");
                 } catch (operationError) {
                     console.error('Error in processing record:', operationError);
                     
