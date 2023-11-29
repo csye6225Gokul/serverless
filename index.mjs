@@ -17,14 +17,31 @@ const downloadRelease = async (url, userEmail, attempt,maxRetries) => {
 
         const statusCode = response.status;
         const contentLength = response.headers['content-length'];
+        const contentType = response.headers['content-type'];
 
         if (statusCode === 200 && contentLength && parseInt(contentLength) > 0) {
-            const fileBuffer = Buffer.from(response.data);
+           // const fileBuffer = Buffer.from(response.data);
 
             console.log('File downloaded successfully:', url);
+
+            if (contentType === 'application/zip' || contentType === 'application/x-zip-compressed') {
+                const fileBuffer = Buffer.from(response.data);
+
+                console.log('File downloaded successfully:', url);
+
+                
+                return fileBuffer;
+            } else {
+                
+                console.error('Invalid content type:', contentType);
+
+                await sendEmail(userEmail, 'Invalid File Type', `The file you attempted to download is not a .zip file. Please check your submission and submit a valid .zip file. Your attempt is ${attempt}, Attempts left: ${maxRetries - attempt}`);
+                await recordEmailSent(userEmail, "fail", "success");
+
+               
+               
+            }
             
-            // Return the file buffer
-            return fileBuffer;
         } else {
             
             console.error('Invalid or empty response:', statusCode);
@@ -62,7 +79,6 @@ const storeInGCS = async (filePath, email,attempt,maxRetries) => {
         const gcsObjectPath = `https://storage.cloud.google.com/${bucketName}/${fileName}`;
         console.log('Sending email...');
         await sendEmail(email, 'Assignment Submitted Sucess', `Your Assignment has been downloaded and stored.\n\nYour attempt is ${attempt}, Attempt left is ${maxRetries - attempt}. \n\nGCS Object Path: ${gcsObjectPath}`);
-
 
     } catch (error) {
 
