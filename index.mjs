@@ -59,7 +59,7 @@ const downloadRelease = async (url, userEmail, attempt,maxRetries) => {
     }
 };
 
-const storeInGCS = async (filePath, email,attempt,maxRetries) => {
+const storeInGCS = async (filePath, email,attempt,maxRetries,assignmentId) => {
     const bucketName = process.env.BUCKET_NAME;
     const serviceAccountKey = JSON.parse(Buffer.from(process.env.GCP_SERVICE_ACCOUNT_KEY, 'utf-8'));
 
@@ -69,7 +69,7 @@ const storeInGCS = async (filePath, email,attempt,maxRetries) => {
 
     
     const timestamp = new Date().toISOString().replace(/:/g, '-');
-    const fileName = `${email}/submission-${attempt}-${timestamp}.zip`;
+    const fileName = `${email}/${assignmentId}/submission-${attempt}-${timestamp}.zip`;
 
     try {
         const bucket = storage.bucket(bucketName);
@@ -145,7 +145,7 @@ export const handler = async (event, context) => {
             for (const snsRecord of event.Records) {
                 const snsMessage = snsRecord.Sns.Message;
                 const parsedMessage = JSON.parse(snsMessage);
-                const { userEmail, githubRepo, attempt, maxRetries } = parsedMessage;
+                const { userEmail, githubRepo, attempt, maxRetries, assignmentId } = parsedMessage;
 
                 try {
                     console.log('Starting download...');
@@ -153,7 +153,7 @@ export const handler = async (event, context) => {
                     console.log('Download completed');
 
                     console.log('Storing in GCS...');
-                    await storeInGCS(releaseData, userEmail,attempt,maxRetries);
+                    await storeInGCS(releaseData, userEmail,attempt,maxRetries,assignmentId);
 
                    // console.log('Sending email...');
                    // await sendEmail(userEmail, 'Assignment Submitted Sucess', `Your Assignment has been downloaded and stored. Your attempt is ${attempt}, Attempt left is ${maxRetries - attempt}`);
